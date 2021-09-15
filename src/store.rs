@@ -18,9 +18,36 @@ pub async fn get_default_store() -> Result<impl Store, StoreError> {
     let store = SimpleFsStore::new(Path::new("./data")).await;
 
     #[cfg(target_arch = "wasm32")]
-    compile_error!("TODO: Implement WASM default store implementation");
+    let store = Ok(IndexedDbStore);
 
     store
+}
+
+#[cfg(target_arch = "wasm32")]
+struct IndexedDbStore;
+
+#[cfg(target_arch = "wasm32")]
+#[async_trait::async_trait]
+impl Store for IndexedDbStore {
+    async fn get_string(&self, key: &str) -> Result<Option<String>, StoreError> {
+        todo!()
+    }
+
+    async fn get_binary(&self, key: &str) -> Result<Option<Vec<u8>>, StoreError> {
+        todo!()
+    }
+
+    async fn put_string(&self, key: &str, data: &str) -> Result<(), StoreError> {
+        todo!()
+    }
+
+    async fn put_binary(&self, key: &str, data: &[u8]) -> Result<(), StoreError> {
+        todo!()
+    }
+
+    async fn delete(&self, key: &str) -> Result<(), StoreError> {
+        todo!()
+    }
 }
 
 /// A simple, raw data storage interface
