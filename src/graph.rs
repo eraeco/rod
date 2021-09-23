@@ -1,30 +1,34 @@
 //! Data structures used to build the rod data graph
 
-use std::{
-    cmp,
-    collections::HashMap,
-    mem,
-    ops::Deref,
-    time::{Duration, SystemTime},
-};
+use std::{cmp, collections::HashMap, mem, ops::Deref, time::SystemTime};
 
+use crate::Ulid;
+
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
+
+#[cfg(feature = "borsh")]
+use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 
 pub trait LexicalCmp {
     fn lexical_cmp(&self, other: &Self) -> cmp::Ordering;
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "borsh",
+    derive(BorshSerialize, BorshDeserialize, BorshSchema)
+)]
 pub struct Node {
-    pub id: Uuid,
+    pub id: Ulid,
     pub fields: HashMap<String, Field>,
 }
 
 impl Default for Node {
     fn default() -> Self {
         Self {
-            id: Uuid::new_v4(),
+            id: Ulid::new(),
             fields: Default::default(),
         }
     }
@@ -34,20 +38,32 @@ impl Node {
     pub fn new() -> Self {
         Self::default()
     }
+
+    pub fn new_with_fields(fields: Vec<(String, Field)>) -> Self {
+        Self {
+            id: Ulid::new(),
+            fields: fields.into_iter().collect(),
+        }
+    }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "borsh",
+    derive(BorshSerialize, BorshDeserialize, BorshSchema)
+)]
 pub struct Field {
     /// Time that this field value was updated as relative to the
     /// [`UNIX_EPOCH`][std::time::SystemTime::UNIX_EPOCH]
-    updated_at: Duration,
+    updated_at: f64,
     value: Value,
 }
 
 /// If an update comes in that is more than this amount of time in the future, we will assume that
 /// the node that sent the update is lying and trying to make it's update take precedence over the
 /// current value of the field.
-const FUTURE_UPDATE_THREASHOLD: Duration = Duration::from_secs(60 * 10);
+const FUTURE_UPDATE_THREASHOLD: f64 = 600.0;
 
 impl Field {
     /// Merge the new value into this field, using the [HAM] merge conflict resolution strategy
@@ -56,7 +72,8 @@ impl Field {
     pub fn merge_with(&mut self, field: &Field) {
         let current_time = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
-            .expect("TODO: system time");
+            .expect("TODO: system time")
+            .as_secs_f64();
 
         // If the new field has the same timestamp
         if field.updated_at == self.updated_at {
@@ -96,7 +113,8 @@ impl Field {
         Self {
             updated_at: SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
-                .expect("Could not get system time"),
+                .expect("Could not get system time")
+                .as_secs_f64(),
             value,
         }
     }
@@ -105,7 +123,7 @@ impl Field {
         &self.value
     }
 
-    pub fn state(&self) -> &Duration {
+    pub fn state(&self) -> &f64 {
         &self.updated_at
     }
 }
@@ -118,7 +136,12 @@ impl Deref for Field {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "borsh",
+    derive(BorshSerialize, BorshDeserialize, BorshSchema)
+)]
 pub enum Value {
     None,
     Bool(bool),
@@ -126,7 +149,7 @@ pub enum Value {
     Float(f64),
     String(String),
     Binary(Vec<u8>),
-    Node(Uuid),
+    Node(Ulid),
 }
 
 impl From<String> for Value {
@@ -177,8 +200,8 @@ impl From<Vec<u8>> for Value {
     }
 }
 
-impl From<Uuid> for Value {
-    fn from(u: Uuid) -> Self {
+impl From<Ulid> for Value {
+    fn from(u: Ulid) -> Self {
         Self::Node(u)
     }
 }

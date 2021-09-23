@@ -1,25 +1,40 @@
-use std::{future::Future, panic, thread};
+pub use implementation::*;
 
-use async_executor::{Executor, Task};
-use futures_lite::future;
-use once_cell::sync::Lazy;
+#[cfg(not(target_arch = "wasm32"))]
+mod implementation {
+    use async_executor::Executor;
+    use futures_lite::future;
+    use once_cell::sync::Lazy;
 
-pub fn spawn<T: Send + 'static>(future: impl Future<Output = T> + Send + 'static) -> Task<T> {
-    static GLOBAL: Lazy<Executor<'_>> = Lazy::new(|| {
-        for n in 1..=num_cpus::get() {
-            thread::Builder::new()
-                .name(format!("rod-worker-{}", n))
-                .spawn(|| loop {
-                    panic::catch_unwind(|| {
-                        future::block_on(GLOBAL.run(future::pending::<()>()))
+    use std::{future::Future, panic, thread};
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn spawn<T: Send + 'static>(future: impl Future<Output = T> + Send + 'static) {
+        static GLOBAL: Lazy<Executor<'_>> = Lazy::new(|| {
+            for n in 1..=num_cpus::get() {
+                thread::Builder::new()
+                    .name(format!("rod-worker-{}", n))
+                    .spawn(|| loop {
+                        panic::catch_unwind(|| {
+                            future::block_on(GLOBAL.run(future::pending::<()>()))
+                        })
+                        .ok();
                     })
-                    .ok();
-                })
-                .expect("cannot spawn executor thread");
-        }
+                    .expect("cannot spawn executor thread");
+            }
 
-        Executor::new()
-    });
+            Executor::new()
+        });
 
-    GLOBAL.spawn(future)
+        GLOBAL.spawn(future).detach()
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+mod implementation {
+    use std::future::Future;
+
+    pub fn spawn<T: Send + 'static>(_future: impl Future<Output = T> + Send + 'static) {
+        todo!();
+    }
 }

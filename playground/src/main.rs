@@ -1,7 +1,11 @@
 use std::{process, time::Duration};
 use tracing as trc;
 
-use rod::engine::Rod;
+use rod::{
+    engine::Rod,
+    graph::{Field, Node, Value},
+    store::{get_default_store, Store},
+};
 
 use futures_lite::future;
 
@@ -18,7 +22,23 @@ async fn start() -> anyhow::Result<()> {
 
     trc::info!("Staring server");
 
-    let engine = Rod::new().await?;
+    let rod = Rod::new().await?;
+
+    let store = get_default_store().await?;
+
+    store.put("key1", Node::new()).await?;
+    store
+        .put(
+            "key2",
+            Node::new_with_fields(vec![(
+                "hello".into(),
+                Field::new(Value::String("world".into())),
+            )]),
+        )
+        .await?;
+
+    dbg!(store.get("hello").await)?;
+    dbg!(store.get("hello2").await)?;
 
     // Just prevent the process from exiting
     let mut interval = async_timer::interval(Duration::from_secs(1));
