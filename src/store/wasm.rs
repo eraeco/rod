@@ -2,8 +2,6 @@
 
 use super::{Store, StoreError};
 
-use crate::graph::Value;
-
 /// Get the default WASM store
 pub async fn get_default_store() -> Result<impl Store, StoreError> {
     Ok(IndexedDbStore)
@@ -22,6 +20,17 @@ impl Store for IndexedDbStore {
     }
 
     async fn delete(&self, _key: &str) -> Result<(), StoreError> {
+        todo!()
+    }
+
+    async fn put_radix(
+        &self,
+        _tree: radix_trie::Trie<String, ulid::Ulid>,
+    ) -> Result<(), StoreError> {
+        todo!()
+    }
+
+    async fn get_radix(&self) -> Result<radix_trie::Trie<String, ulid::Ulid>, StoreError> {
         todo!()
     }
 }

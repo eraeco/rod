@@ -17,6 +17,24 @@ pub trait LexicalCmp {
 const FUTURE_UPDATE_THREASHOLD: f64 = 600.0;
 
 impl Field {
+    pub fn new(value: Value) -> Self {
+        Self {
+            updated_at: SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .expect("Could not get system time")
+                .as_secs_f64(),
+            value,
+        }
+    }
+
+    pub fn value(&self) -> &Value {
+        &self.value
+    }
+
+    pub fn state(&self) -> &f64 {
+        &self.updated_at
+    }
+
     /// Merge the new value into this field, using the [HAM] merge conflict resolution strategy
     ///
     /// [HAM]: https://github.com/amark/gun/wiki/Conflict-Resolution-with-Guns
@@ -56,26 +74,6 @@ impl Field {
         } else {
             unreachable!()
         }
-    }
-}
-
-impl Field {
-    pub fn new(value: Value) -> Self {
-        Self {
-            updated_at: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .expect("Could not get system time")
-                .as_secs_f64(),
-            value,
-        }
-    }
-
-    pub fn value(&self) -> &Value {
-        &self.value
-    }
-
-    pub fn state(&self) -> &f64 {
-        &self.updated_at
     }
 }
 

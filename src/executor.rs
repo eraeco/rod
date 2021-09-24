@@ -48,7 +48,9 @@ mod implementation {
     use std::future::Future;
 
     /// Spawn an async task to run in the background
-    pub fn spawn<T: Send + 'static>(_future: impl Future<Output = T> + Send + 'static) {
-        todo!();
+    pub fn spawn<T: Send + 'static>(future: impl Future<Output = T> + Send + 'static) {
+        wasm_bindgen_futures::spawn_local(async move {
+            future.await;
+        });
     }
 }

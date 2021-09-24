@@ -3,7 +3,6 @@
 use std::sync::Arc;
 
 use tracing as trc;
-use ulid::Ulid;
 
 use crate::{
     graph::Node,
@@ -24,8 +23,6 @@ pub struct Rod {
 }
 
 struct RodInner {
-    /// The list of nodes cached in memory
-    nodes: scc::HashMap<Ulid, Node>,
     /// The backing data store for this engine
     store: Box<dyn Store + Sync + Send>,
 }
@@ -41,10 +38,7 @@ impl Rod {
         let store = Box::new(get_default_store().await?);
 
         // Create clonable inner data
-        let inner = Arc::new(RodInner {
-            nodes: Default::default(),
-            store,
-        });
+        let inner = Arc::new(RodInner { store });
 
         // Create Rod instance
         let instance = Rod { inner };
@@ -52,7 +46,30 @@ impl Rod {
         Ok(instance)
     }
 
-    // pub async fn get(&self, key: &str) -> Value {
-    //     self.inner.store.
-    // }
+    /// Get a node from the database
+    pub async fn get(&self, key: &str) -> Result<Option<Node>, StoreError> {
+        let this = &self.inner;
+
+        let id = if let Some(id) = this.store.get_id(key).await?.flatten() {
+            id
+        } else {
+            return Ok(None);
+        };
+
+        if let Some(node) = this.store.get_node(&id).await? {
+            return Ok(Some(node));
+        } else {
+            return Ok(None);
+        }
+    }
+
+    pub async fn put(&self, key: &str, node: Node) -> Result<(), StoreError> {
+        let this = &self.inner;
+
+        let id = node.id.clone();
+        this.store.set_id(key, Some(id)).await?;
+        this.store.put_node(node).await?;
+
+        Ok(())
+    }
 }

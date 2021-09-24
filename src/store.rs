@@ -1,5 +1,7 @@
 //! Backing data stores used for persistant data
 
+use ulid::Ulid;
+
 use crate::graph::Node;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -31,14 +33,22 @@ pub async fn get_default_store() -> Result<impl Store, StoreError> {
 /// filesystem, S3, browser LocalStorage or IndexedDB, etc.
 #[async_trait::async_trait]
 pub trait Store {
-    /// Get a value from the store
-    async fn get(&self, key: &str) -> Result<Option<Node>, StoreError>;
+    /// Get a node from the store using it's ULID
+    async fn get_node(&self, id: &Ulid) -> Result<Option<Node>, StoreError>;
 
-    // Put a value in the store
-    async fn put(&self, key: &str, value: Node) -> Result<(), StoreError>;
+    /// Put a node into the store
+    ///
+    /// The node can later be retrieved using it's ULID
+    async fn put_node(&self, node: Node) -> Result<(), StoreError>;
 
-    /// Delete a key
-    async fn delete(&self, key: &str) -> Result<(), StoreError>;
+    /// Delete a node from the store using it's ULID
+    async fn delete_node(&self, id: &Ulid) -> Result<(), StoreError>;
+
+    /// Point a string key in the database to a node's ULID
+    async fn set_id(&self, key: &str, id: Option<Ulid>) -> Result<(), StoreError>;
+
+    /// Get the ULID pointed at by the string key in the database
+    async fn get_id(&self, key: &str) -> Result<Option<Option<Ulid>>, StoreError>;
 }
 
 /// An error that can occur in a [`Store`]

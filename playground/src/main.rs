@@ -1,12 +1,7 @@
 use std::{process, time::Duration};
 use tracing as trc;
 
-use rod::{
-    engine::Rod,
-    graph::{repr::repr_json::JsonNode, Field, Node, Value},
-    store::{get_default_store, Store},
-    Ulid,
-};
+use rod::engine::Rod;
 
 use futures_lite::future;
 
@@ -23,33 +18,30 @@ async fn start() -> anyhow::Result<()> {
 
     trc::info!("Staring server");
 
-    let _rod = Rod::new().await?;
+    let rod = Rod::new().await?;
 
-    let store = get_default_store().await?;
+    // {
+    //     use rod::{
+    //         graph::{Field, Node, Value},
+    //         Ulid,
+    //     };
+    //     let node1 = Node::new();
+    //     let node2 = Node::new_with_fields(vec![
+    //         ("hello".into(), Field::new(Value::String("world".into()))),
+    //         (
+    //             "someJunk".into(),
+    //             Field::new(Value::Binary(vec![1, 2, 3, 4])),
+    //         ),
+    //         ("age".into(), Field::new(Value::Float(30.0))),
+    //         ("nothing".into(), Field::new(Value::None)),
+    //         ("anotherNode".into(), Field::new(Value::Node(Ulid::new()))),
+    //     ]);
 
-    store.put("key1", Node::new()).await?;
-    store
-        .put(
-            "key2",
-            Node::new_with_fields(vec![
-                ("hello".into(), Field::new(Value::String("world".into()))),
-                (
-                    "someJunk".into(),
-                    Field::new(Value::Binary(vec![1, 2, 3, 4])),
-                ),
-                ("age".into(), Field::new(Value::Float(30.0))),
-                ("nothing".into(), Field::new(Value::None)),
-                ("anotherNode".into(), Field::new(Value::Node(Ulid::new()))),
-            ]),
-        )
-        .await?;
+    //     rod.put("node1", node1).await?;
+    //     rod.put("node2", node2).await?;
+    // }
 
-    let node2 = store.get("key2").await?.unwrap();
-    let json = serde_json::to_string_pretty(&JsonNode::from(node2))?;
-    println!("{}", json);
-
-    let parsed: JsonNode = serde_json::from_str(&json).unwrap();
-    println!("{:#?}", Node::from(parsed));
+    dbg!(rod.get("node2").await?);
 
     // Just prevent the process from exiting
     let mut interval = async_timer::interval(Duration::from_secs(1));
