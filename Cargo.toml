@@ -32,20 +32,15 @@ borsh = { version = "0.9.1", optional = true }
 base64 = { version = "0.13.0", optional = true }
 
 # Async
-futures-lite = "1.12.0"
 async-trait = "0.1.51"
-async-timer = "1.0.0-beta.7"
-getrandom = { version = "*", features = ["js"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # Async
+futures-lite = "1.12.0"
 easy-parallel = "3.1.0"
 num_cpus = "1.13.0"
 blocking = "1.0.2"
 async-executor = "1.4.1"
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-wee_alloc = "0.4.5"
 
 [profile.release]
 lto = true

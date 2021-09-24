@@ -1,18 +1,11 @@
-use std::{time::Duration};
-
 use rod::engine::Rod;
 
-use futures_lite::future;
-
 fn main() {
-    let ex = async_executor::Executor::new();
-    future::block_on(ex.run(start())).expect("Error");
+    pollster::block_on(start());
 }
 
-async fn start() -> anyhow::Result<()> {
-    let engine = Rod::new().await?;
+async fn start() {
+    let _engine = Rod::new().await.unwrap();
 
-    future::pending::<()>().await;
-
-    Ok(())
+    std::future::pending::<()>().await;
 }

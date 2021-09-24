@@ -1,17 +1,27 @@
 //! Store implementatons for WASM targets
 
-use super::Store;
+use super::{Store, StoreError};
+
+use crate::graph::Value;
 
 /// Get the default WASM store
 pub async fn get_default_store() -> Result<impl Store, StoreError> {
-    let store = Ok(IndexedDbStore);
+    Ok(IndexedDbStore)
 }
 
 pub struct IndexedDbStore;
 
 #[async_trait::async_trait]
 impl Store for IndexedDbStore {
-    async fn get(&self, key: &str) -> Result<Option<Value>, StoreError> {}
-    async fn put(&self, key: &str, value: Value) -> Result<(), StoreError> {}
-    async fn delete(&self, key: &str) -> Result<(), StoreError> {}
+    async fn get(&self, _key: &str) -> Result<Option<crate::graph::Node>, StoreError> {
+        todo!()
+    }
+
+    async fn put(&self, _key: &str, _value: crate::graph::Node) -> Result<(), StoreError> {
+        todo!()
+    }
+
+    async fn delete(&self, _key: &str) -> Result<(), StoreError> {
+        todo!()
+    }
 }
