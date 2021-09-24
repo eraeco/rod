@@ -1,10 +1,12 @@
+//! Backing data stores used for persistant data
+
 use crate::graph::Node;
 
 #[cfg(not(target_arch = "wasm32"))]
-mod native;
+pub mod native;
 
 #[cfg(target_arch = "wasm32")]
-mod wasm;
+pub mod wasm;
 
 /// Get the default store implementation for the current platform
 ///

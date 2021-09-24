@@ -1,5 +1,8 @@
+//! Store implementatons for WASM targets
+
 use super::Store;
 
+/// Get the default WASM store
 pub async fn get_default_store() -> Result<impl Store, StoreError> {
     let store = Ok(IndexedDbStore);
 }

@@ -1,10 +1,11 @@
-use std::{sync::Arc, time::Duration};
+//! Contains the main [`Rod`] struct, used to access the replicated database
+
+use std::sync::Arc;
 
 use tracing as trc;
 use ulid::Ulid;
 
 use crate::{
-    executor,
     graph::Node,
     store::{get_default_store, Store, StoreError},
 };

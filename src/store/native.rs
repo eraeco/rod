@@ -1,3 +1,5 @@
+//! Store implementatons for native targets
+
 use std::{
     fs::{self, OpenOptions},
     io::{Read, Write},
@@ -10,6 +12,7 @@ use crate::graph::{repr::repr_borsh::BorshNode, Node};
 
 use super::{Store, StoreError};
 
+/// Get the default native store
 pub async fn get_default_store() -> Result<impl Store, StoreError> {
     SimpleFsStore::new(Path::new("./data")).await
 }
@@ -26,7 +29,7 @@ pub struct SimpleFsStore {
 }
 
 impl SimpleFsStore {
-    /// Create a new [`FsStore`] that puts files in the specified `root_dir`
+    /// Create a new [`SimpleFsStore`] that puts files in the specified `root_dir`
     pub async fn new(root_dir: &Path) -> Result<SimpleFsStore, StoreError> {
         #[cfg(not(feature = "borsh"))]
         compile_error!("`borsh` feature required to use `SimpleFsStore`");

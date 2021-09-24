@@ -1,8 +1,13 @@
+//! CRDTs ( Conflict-free Replicated Data Types ), including the implementation of GUN's HAM
+//! algorithm
+
 use std::{cmp, mem, time::SystemTime};
 
 use crate::graph::{Field, Value};
 
+/// Trait implemented by structs that can be lexically sorted
 pub trait LexicalCmp {
+    /// Compare two object lexographically
     fn lexical_cmp(&self, other: &Self) -> cmp::Ordering;
 }
 
