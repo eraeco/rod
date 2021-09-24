@@ -27,10 +27,14 @@ pub async fn get_default_store() -> Result<impl Store, StoreError> {
     store
 }
 
-/// A simple, [`Node`] storage interface
+/// A [`Node`] storage interface
 ///
 /// [`Store`] is designed to be implemented over any persistant storage interface such as the
-/// filesystem, S3, browser LocalStorage or IndexedDB, etc.
+/// filesystem, S3, browser LocalStorage or IndexedDB, etc. but is also responsible for any
+/// in-memory caching or buffering that may need to be done to optimize for performance.
+///
+/// Callers will not be expected to have to manually flush do disk or other permanant storage, but
+/// it will be the responsibility of the store.
 #[async_trait::async_trait]
 pub trait Store {
     /// Get a node from the store using it's ULID

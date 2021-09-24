@@ -58,8 +58,8 @@ impl SimpleFsStore {
         self.node_dir.join(key.to_string())
     }
 
-    fn id_path(&self, id: &str) -> PathBuf {
-        self.id_dir.join(id.to_string())
+    fn id_path(&self, key: &str) -> PathBuf {
+        self.id_dir.join(base64::encode(key))
     }
 }
 

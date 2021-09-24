@@ -30,7 +30,7 @@ pub struct Field {
 }
 
 /// A value represents the different data types that a field value can take
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     /// An empty value
     None,
@@ -49,7 +49,13 @@ pub enum Value {
 }
 
 mod impls {
+    use crate::{engine::Rod, store::StoreError};
+
     use super::*;
+
+    //
+    // Node
+    //
 
     impl Default for Node {
         fn default() -> Self {
@@ -71,13 +77,68 @@ mod impls {
                 fields: fields.into_iter().collect(),
             }
         }
+
+        pub fn get(&self, key: &str) -> Option<&Value> {
+            self.fields.get(key).map(|x| &x.value)
+        }
+
+        pub fn set<V: Into<Value>>(&mut self, key: &str, value: V) {
+            self.fields.insert(key.into(), Field::new(value.into()));
+        }
     }
+
+    //
+    // Field
+    //
 
     impl Deref for Field {
         type Target = Value;
 
         fn deref(&self) -> &Self::Target {
             &self.value
+        }
+    }
+
+    //
+    // Value
+    //
+
+    impl Value {
+        /// Return whether or not the value is [`Value::None`]
+        pub fn is_none(&self) -> bool {
+            self == &Value::None
+        }
+
+        /// Get the value as an ID
+        pub fn as_id(&self) -> Option<&Ulid> {
+            if let Value::Node(id) = self {
+                Some(id)
+            } else {
+                None
+            }
+        }
+
+        /// If this value is an ID, get the node associated to the ID
+        pub async fn follow(&self, rod: &Rod) -> Result<Option<Node>, StoreError> {
+            let id = if let Value::Node(id) = self {
+                id
+            } else {
+                return Ok(None);
+            };
+
+            rod.get(id).await
+        }
+    }
+
+    impl From<String> for Value {
+        fn from(s: String) -> Self {
+            Self::String(s)
+        }
+    }
+
+    impl From<&Node> for Value {
+        fn from(n: &Node) -> Self {
+            Self::Node(n.id.clone())
         }
     }
 }

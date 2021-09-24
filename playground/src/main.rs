@@ -1,4 +1,4 @@
-use std::{process, time::Duration};
+use std::process;
 use tracing as trc;
 
 use rod::engine::Rod;
@@ -18,36 +18,29 @@ async fn start() -> anyhow::Result<()> {
 
     trc::info!("Staring server");
 
-    let rod = Rod::new().await?;
+    let rod = &Rod::new().await?;
 
-    // {
-    //     use rod::{
-    //         graph::{Field, Node, Value},
-    //         Ulid,
-    //     };
-    //     let node1 = Node::new();
-    //     let node2 = Node::new_with_fields(vec![
-    //         ("hello".into(), Field::new(Value::String("world".into()))),
-    //         (
-    //             "someJunk".into(),
-    //             Field::new(Value::Binary(vec![1, 2, 3, 4])),
-    //         ),
-    //         ("age".into(), Field::new(Value::Float(30.0))),
-    //         ("nothing".into(), Field::new(Value::None)),
-    //         ("anotherNode".into(), Field::new(Value::Node(Ulid::new()))),
-    //     ]);
+    {
+        use rod::graph::Node;
+        let mut mary = Node::new();
+        mary.set("name", "Mary".to_string());
 
-    //     rod.put("node1", node1).await?;
-    //     rod.put("node2", node2).await?;
-    // }
+        let mut john = Node::new();
+        john.set("name", "John".to_string());
+        john.set("wife", &mary);
 
-    dbg!(rod.get("node2").await?);
-
-    // Just prevent the process from exiting
-    let mut interval = async_timer::interval(Duration::from_secs(1));
-    loop {
-        interval.wait().await;
+        rod.put("users/john", john).await?;
+        rod.put("users/mary", mary).await?;
     }
+
+    let node2 = dbg!(rod.get("users/john").await?).unwrap();
+
+    dbg!(node2.get("name"));
+    let wife = node2.get("wife").unwrap().follow(rod).await?.unwrap();
+
+    dbg!(wife);
+
+    Ok(())
 }
 
 fn install_tracing() {

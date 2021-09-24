@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use tracing as trc;
+use ulid::Ulid;
 
 use crate::{
     graph::Node,
@@ -47,10 +48,16 @@ impl Rod {
     }
 
     /// Get a node from the database
-    pub async fn get(&self, key: &str) -> Result<Option<Node>, StoreError> {
+    pub async fn get<'a, K: Into<DbIndex<'a>>>(&self, key: K) -> Result<Option<Node>, StoreError> {
         let this = &self.inner;
+        let key = key.into();
 
-        let id = if let Some(id) = this.store.get_id(key).await?.flatten() {
+        let ulid = match key {
+            DbIndex::Str(s) => this.store.get_id(s).await?.flatten(),
+            DbIndex::Ulid(id) => Some(id.clone()),
+        };
+
+        let id = if let Some(id) = ulid {
             id
         } else {
             return Ok(None);
@@ -71,5 +78,22 @@ impl Rod {
         this.store.put_node(node).await?;
 
         Ok(())
+    }
+}
+
+pub enum DbIndex<'a> {
+    Str(&'a str),
+    Ulid(&'a Ulid),
+}
+
+impl<'a> From<&'a str> for DbIndex<'a> {
+    fn from(s: &'a str) -> Self {
+        DbIndex::Str(s)
+    }
+}
+
+impl<'a> From<&'a Ulid> for DbIndex<'a> {
+    fn from(id: &'a Ulid) -> Self {
+        DbIndex::Ulid(id)
     }
 }
