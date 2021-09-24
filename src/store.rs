@@ -8,7 +8,7 @@ mod wasm;
 
 /// Get the default store implementation for the current platform
 ///
-/// Currently on non-WASM platforms this is the [`SimpleFsStore`], configured to use the `./data`
+/// Currently on non-WASM platforms this is the `SimpleFsStore`, configured to use the `./data`
 /// directory for storage.
 ///
 /// The default store implementation on WASM will use the browser's IndexedDB, but this is not yet
@@ -23,21 +23,10 @@ pub async fn get_default_store() -> Result<impl Store, StoreError> {
     store
 }
 
-/// A simple, raw data storage interface
+/// A simple, [`Node`] storage interface
 ///
 /// [`Store`] is designed to be implemented over any persistant storage interface such as the
 /// filesystem, S3, browser LocalStorage or IndexedDB, etc.
-///
-/// The interface is a simple key-value store, where each key could either have no data asociated to
-/// it, or it could have a value that may either be either string data or binary data.
-///
-/// Because some data stores such as browser local storage can only store string data, separate
-/// functions are used for getting and setting string and binary data. This allows the
-/// implementation to choose to base64 encode/decode binary values when writing to a string-only
-/// data store, or to just write the raw bytes directly if binary storage is supported.
-///
-/// Calling [`Store::get_binary`] on a key on a string value or calling [`Store::get_string`] on a
-/// binary value should fail with an error.
 #[async_trait::async_trait]
 pub trait Store {
     /// Get a value from the store

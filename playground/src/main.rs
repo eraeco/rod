@@ -3,8 +3,9 @@ use tracing as trc;
 
 use rod::{
     engine::Rod,
-    graph::{Field, Node, Value},
+    graph::{repr::repr_json::JsonNode, Field, Node, Value},
     store::{get_default_store, Store},
+    Ulid,
 };
 
 use futures_lite::future;
@@ -22,7 +23,7 @@ async fn start() -> anyhow::Result<()> {
 
     trc::info!("Staring server");
 
-    let rod = Rod::new().await?;
+    let _rod = Rod::new().await?;
 
     let store = get_default_store().await?;
 
@@ -30,15 +31,25 @@ async fn start() -> anyhow::Result<()> {
     store
         .put(
             "key2",
-            Node::new_with_fields(vec![(
-                "hello".into(),
-                Field::new(Value::String("world".into())),
-            )]),
+            Node::new_with_fields(vec![
+                ("hello".into(), Field::new(Value::String("world".into()))),
+                (
+                    "someJunk".into(),
+                    Field::new(Value::Binary(vec![1, 2, 3, 4])),
+                ),
+                ("age".into(), Field::new(Value::Float(30.0))),
+                ("nothing".into(), Field::new(Value::None)),
+                ("anotherNode".into(), Field::new(Value::Node(Ulid::new()))),
+            ]),
         )
         .await?;
 
-    dbg!(store.get("hello").await)?;
-    dbg!(store.get("hello2").await)?;
+    let node2 = store.get("key2").await?.unwrap();
+    let json = serde_json::to_string_pretty(&JsonNode::from(node2))?;
+    println!("{}", json);
+
+    let parsed: JsonNode = serde_json::from_str(&json).unwrap();
+    println!("{:#?}", Node::from(parsed));
 
     // Just prevent the process from exiting
     let mut interval = async_timer::interval(Duration::from_secs(1));

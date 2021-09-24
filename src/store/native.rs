@@ -6,7 +6,7 @@ use std::{
 
 use blocking::unblock;
 
-use crate::graph::Node;
+use crate::graph::{repr::repr_borsh::BorshNode, Node};
 
 use super::{Store, StoreError};
 
@@ -41,6 +41,10 @@ impl SimpleFsStore {
             })
         })
         .await
+    }
+
+    fn file_path(&self, key: &str) -> PathBuf {
+        self.root_dir.join(key)
     }
 }
 
@@ -91,10 +95,12 @@ impl Store for SimpleFsStore {
         use borsh::BorshDeserialize;
 
         // Get the path to the file
-        let file_path = self.root_dir.join(key);
+        let file_path = self.file_path(key);
 
         if let Some(buf) = load_file(file_path).await? {
-            let node = Node::deserialize(&mut buf.as_slice()).map_err(box_error)?;
+            let node = BorshNode::deserialize(&mut buf.as_slice())
+                .map_err(box_error)?
+                .into();
 
             Ok(Some(node))
         } else {
@@ -106,9 +112,12 @@ impl Store for SimpleFsStore {
         use borsh::BorshSerialize;
 
         // Get the path to the file
-        let file_path = self.root_dir.join(key);
+        let file_path = self.file_path(key);
+
         // Clone the data
-        let data = data.try_to_vec().expect("Impossible IO error");
+        let data = BorshNode::from(data)
+            .try_to_vec()
+            .expect("Unreachable: IO error");
 
         // Write the file
         write_file(file_path, data).await
@@ -116,7 +125,7 @@ impl Store for SimpleFsStore {
 
     async fn delete(&self, key: &str) -> Result<(), StoreError> {
         // Get the path to the file
-        let file_path = self.root_dir.join(key);
+        let file_path = self.file_path(key);
 
         // Perform blocking operation on a thread pool
         unblock(move || {

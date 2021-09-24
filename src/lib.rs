@@ -2,9 +2,9 @@ pub mod engine;
 pub mod graph;
 pub mod protocol;
 pub mod store;
-mod ulid;
+pub mod merge;
 
-pub use self::ulid::Ulid;
+pub use ulid::Ulid;
 
 pub(crate) mod executor;
 

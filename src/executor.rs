@@ -1,3 +1,5 @@
+//! Implementation of async executor functions such as [`spawn`]
+
 pub use implementation::*;
 
 #[cfg(not(target_arch = "wasm32"))]
