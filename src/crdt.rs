@@ -3,12 +3,24 @@
 
 use std::{cmp, mem, time::SystemTime};
 
-use crate::graph::{Field, Value};
+use crate::graph::{Field, Node, Value};
 
 /// Trait implemented by structs that can be lexically sorted
 pub trait LexicalCmp {
     /// Compare two object lexographically
     fn lexical_cmp(&self, other: &Self) -> cmp::Ordering;
+}
+
+impl Node {
+    pub fn merge_into(self, other_node: &mut Node) {
+        for (key, field_value) in self.fields {
+            if let Some(other_field_value) = other_node.fields.get_mut(&key) {
+                other_field_value.merge_with(&field_value);
+            } else {
+                other_node.fields.insert(key, field_value);
+            }
+        }
+    }
 }
 
 /// If an update comes in that is more than this amount of time in the future, we will assume that
@@ -19,6 +31,7 @@ const FUTURE_UPDATE_THREASHOLD: f64 = 600.0;
 impl Field {
     pub fn new(value: Value) -> Self {
         Self {
+            // TODO(perf): Worry about avoiding the syscalls involved with getting the current time.
             updated_at: SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
                 .expect("Could not get system time")
@@ -55,22 +68,29 @@ impl Field {
                 cmp::Ordering::Greater => self.value = field.value.clone(),
             }
 
-        // If the other field is and older update than the one we have, just ignore it
+        // If the other field is an older update than the one we have, just ignore it
         } else if field.updated_at < self.updated_at {
             return;
 
-        // If the other field is in the future
-        } else if field.updated_at > current_time {
-            // If the field is too far in the future, ignore it
-            if field.updated_at - current_time > FUTURE_UPDATE_THREASHOLD {
-                return;
-            }
+        // If the other field is later than our current value
+        } else if field.updated_at > self.updated_at {
+            // If the field was updated before or at the current time
+            if field.updated_at <= current_time {
+                *self = field.clone();
 
-            // Wait to apply this update until later
-            unimplemented!(
-                "Use async logic to apply this update once our system clock \
+            // If the field is too far in the future, ignore it
+            } else if field.updated_at - current_time > FUTURE_UPDATE_THREASHOLD {
+                return;
+
+            // If field was updated in the fugure, but not too far in the future, schedule a task to
+            // update the field at that time in the future
+            } else {
+                // Wait to apply this update until later
+                unimplemented!(
+                    "Use async logic to apply this update once our system clock \
                 reaches the future time"
-            );
+                );
+            }
         } else {
             unreachable!()
         }

@@ -23,7 +23,11 @@ async fn start() -> anyhow::Result<()> {
     let mary = rod
         .get("users/mary")
         .await?
-        .tap_mut(|x| x.set("name", "Mary".to_string()))
+        .tap_mut(|x| {
+            if x.get("name").is_none() {
+                x.set("name", "Mary".to_string())
+            }
+        })
         .tap_mut(|x| x.set("age", 32));
     rod.put("users/mary", &mary).await?;
 
@@ -46,6 +50,8 @@ async fn start() -> anyhow::Result<()> {
         .owned();
 
     dbg!(wife_name);
+
+    dbg!(rod.get("users/mary").await?);
 
     Ok(())
 }

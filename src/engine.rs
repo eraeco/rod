@@ -73,10 +73,20 @@ impl Rod {
     /// Put a node into the database
     pub async fn put<N: AsRef<Node>>(&self, key: &str, node: N) -> Result<(), StoreError> {
         let this = &self.inner;
-        let node: &Node = node.as_ref();
+        let new_node = node.as_ref().clone();
+        let node_id = new_node.id.clone();
 
-        this.store.set_id(key, Some(node.id.clone())).await?;
-        this.store.put_node(node.clone()).await?;
+        let node_to_update = this.store.get_node(&new_node.id).await?;
+
+        let new_node = if let Some(mut node) = node_to_update {
+            new_node.merge_into(&mut node);
+            node
+        } else {
+            new_node.clone()
+        };
+
+        this.store.put_node(new_node).await?;
+        this.store.set_id(key, Some(node_id.clone())).await?;
 
         Ok(())
     }
@@ -193,6 +203,7 @@ impl<'a> std::ops::Deref for ValueRef<'a> {
     }
 }
 
+/// Can be used in [`Rod::get()`], but isn't usually needed by users directly
 pub enum DbIndex<'a> {
     Str(&'a str),
     Ulid(&'a Ulid),
