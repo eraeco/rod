@@ -12,4 +12,10 @@ pub mod graph;
 pub mod protocol;
 pub mod store;
 
+pub use tap;
 pub use ulid::Ulid;
+
+pub mod prelude {
+    pub use crate::engine::*;
+    pub use tap::prelude::*;
+}

@@ -1,6 +1,6 @@
 //! Data structures used to build the rod data graph
 
-use std::{collections::HashMap, ops::Deref};
+use std::collections::HashMap;
 
 use ulid::Ulid;
 
@@ -8,7 +8,7 @@ pub mod repr;
 
 /// [`Node`] is the core data structure in the data graph
 ///
-/// A grpah is made up of a collection of nodes
+/// A graph is made up of a collection of nodes
 #[derive(Debug, Clone)]
 pub struct Node {
     /// The node's universally unique identifier
@@ -49,8 +49,6 @@ pub enum Value {
 }
 
 mod impls {
-    use crate::{engine::Rod, store::StoreError};
-
     use super::*;
 
     //
@@ -70,69 +68,58 @@ mod impls {
         pub fn new() -> Self {
             Self::default()
         }
-
-        pub fn new_with_fields(fields: Vec<(String, Field)>) -> Self {
-            Self {
-                id: Ulid::new(),
-                fields: fields.into_iter().collect(),
-            }
-        }
-
-        pub fn get(&self, key: &str) -> Option<&Value> {
-            self.fields.get(key).map(|x| &x.value)
-        }
-
-        pub fn set<V: Into<Value>>(&mut self, key: &str, value: V) {
-            self.fields.insert(key.into(), Field::new(value.into()));
-        }
-    }
-
-    //
-    // Field
-    //
-
-    impl Deref for Field {
-        type Target = Value;
-
-        fn deref(&self) -> &Self::Target {
-            &self.value
-        }
     }
 
     //
     // Value
     //
 
-    impl Value {
-        /// Return whether or not the value is [`Value::None`]
-        pub fn is_none(&self) -> bool {
-            self == &Value::None
-        }
-
-        /// Get the value as an ID
-        pub fn as_id(&self) -> Option<&Ulid> {
-            if let Value::Node(id) = self {
-                Some(id)
-            } else {
-                None
-            }
-        }
-
-        /// If this value is an ID, get the node associated to the ID
-        pub async fn follow(&self, rod: &Rod) -> Result<Option<Node>, StoreError> {
-            let id = if let Value::Node(id) = self {
-                id
-            } else {
-                return Ok(None);
-            };
-
-            rod.get(id).await
+    impl From<()> for Value {
+        fn from(_: ()) -> Self {
+            Self::None
         }
     }
+
+    macro_rules! from_int {
+        ($int:ident) => {
+            impl From<$int> for Value {
+                fn from(i: $int) -> Self {
+                    Self::Int(i as i64)
+                }
+            }
+        };
+    }
+
+    macro_rules! from_float {
+        ($float:ident) => {
+            impl From<$float> for Value {
+                fn from(f: $float) -> Self {
+                    Self::Float(f as f64)
+                }
+            }
+        };
+    }
+
+    from_int!(i8);
+    from_int!(i16);
+    from_int!(i32);
+    from_int!(i64);
+    from_int!(u8);
+    from_int!(u16);
+    from_int!(u32);
+    from_int!(u64);
+    from_float!(f32);
+    from_float!(f64);
 
     impl From<String> for Value {
         fn from(s: String) -> Self {
             Self::String(s)
+        }
+    }
+
+    impl From<Vec<u8>> for Value {
+        fn from(b: Vec<u8>) -> Self {
+            Self::Binary(b)
         }
     }
 

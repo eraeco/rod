@@ -46,7 +46,7 @@ impl Field {
 
         // If the new field has the same timestamp
         if field.updated_at == self.updated_at {
-            match self.lexical_cmp(field) {
+            match self.value.lexical_cmp(&field.value) {
                 // Totally equal, do nothing
                 cmp::Ordering::Equal => return,
                 // Keep our value, do nothing

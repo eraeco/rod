@@ -1,7 +1,7 @@
 use std::process;
 use tracing as trc;
 
-use rod::engine::Rod;
+use rod::prelude::*;
 
 use futures_lite::future;
 
@@ -20,25 +20,32 @@ async fn start() -> anyhow::Result<()> {
 
     let rod = &Rod::new().await?;
 
-    {
-        use rod::graph::Node;
-        let mut mary = Node::new();
-        mary.set("name", "Mary".to_string());
+    let mary = rod
+        .get("users/mary")
+        .await?
+        .tap_mut(|x| x.set("name", "Mary".to_string()))
+        .tap_mut(|x| x.set("age", 32));
+    rod.put("users/mary", &mary).await?;
 
-        let mut john = Node::new();
-        john.set("name", "John".to_string());
-        john.set("wife", &mary);
+    rod.get("users/john")
+        .await?
+        .tap_mut(|x| x.set("name", "John".to_string()))
+        .tap_mut(|x| x.set("wife", &mary))
+        .pipe(|x| rod.put("users/john", x))
+        .await?;
 
-        rod.put("users/john", john).await?;
-        rod.put("users/mary", mary).await?;
-    }
+    let wife_name = rod
+        .get("users/john")
+        .await?
+        .get("wife")
+        .unwrap()
+        .follow()
+        .await?
+        .get("name")
+        .unwrap()
+        .owned();
 
-    let node2 = dbg!(rod.get("users/john").await?).unwrap();
-
-    dbg!(node2.get("name"));
-    let wife = node2.get("wife").unwrap().follow(rod).await?.unwrap();
-
-    dbg!(wife);
+    dbg!(wife_name);
 
     Ok(())
 }

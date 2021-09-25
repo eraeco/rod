@@ -6,7 +6,7 @@ use tracing as trc;
 use ulid::Ulid;
 
 use crate::{
-    graph::Node,
+    graph::{Field, Node, Value},
     store::{get_default_store, Store, StoreError},
 };
 
@@ -48,7 +48,7 @@ impl Rod {
     }
 
     /// Get a node from the database
-    pub async fn get<'a, K: Into<DbIndex<'a>>>(&self, key: K) -> Result<Option<Node>, StoreError> {
+    pub async fn get<'a, K: Into<DbIndex<'a>>>(&self, key: K) -> Result<NodeProxy, StoreError> {
         let this = &self.inner;
         let key = key.into();
 
@@ -60,24 +60,137 @@ impl Rod {
         let id = if let Some(id) = ulid {
             id
         } else {
-            return Ok(None);
+            return Ok(NodeProxy::new(self, Node::new()).await?);
         };
 
         if let Some(node) = this.store.get_node(&id).await? {
-            return Ok(Some(node));
+            return Ok(NodeProxy::new(self, node).await?);
         } else {
-            return Ok(None);
+            return Ok(NodeProxy::new(self, Node::new()).await?);
         }
     }
 
-    pub async fn put(&self, key: &str, node: Node) -> Result<(), StoreError> {
+    /// Put a node into the database
+    pub async fn put<N: AsRef<Node>>(&self, key: &str, node: N) -> Result<(), StoreError> {
         let this = &self.inner;
+        let node: &Node = node.as_ref();
 
-        let id = node.id.clone();
-        this.store.set_id(key, Some(id)).await?;
-        this.store.put_node(node).await?;
+        this.store.set_id(key, Some(node.id.clone())).await?;
+        this.store.put_node(node.clone()).await?;
 
         Ok(())
+    }
+}
+
+/// A node loaded from the database with mutators that can be used to modify the node and
+/// synchronize it back to the database
+///
+/// Having a [`NodeProxy`] does **not** represent exclusive access to the node data. This means that
+///  there is nothing stopping another thread from modifying the node while you have a [`NodeProxy`]
+pub struct NodeProxy {
+    rod: Rod,
+    node: Node,
+}
+
+impl AsRef<Node> for NodeProxy {
+    fn as_ref(&self) -> &Node {
+        &self.node
+    }
+}
+
+impl std::fmt::Debug for NodeProxy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NodeProxy")
+            .field("rod", &"Rod")
+            .field("node", &self.node)
+            .finish()
+    }
+}
+
+impl NodeProxy {
+    async fn new(rod: &Rod, node: Node) -> Result<Self, StoreError> {
+        rod.inner.store.put_node(node.clone()).await?;
+
+        Ok(Self {
+            rod: rod.clone(),
+            node,
+        })
+    }
+
+    /// Get a node field
+    pub fn get(&self, key: &str) -> Option<ValueRef> {
+        self.node
+            .fields
+            .get(key)
+            .map(|field| ValueRef::new(&self.rod, &field.value))
+    }
+
+    /// Set a node field
+    ///
+    /// > **Note:** The changes to the node are not persisted or synchronized until you call
+    /// > [`NodeRef::save()`]
+    pub fn set<V: Into<Value>>(&mut self, key: &str, value: V) {
+        self.node
+            .fields
+            .insert(key.to_string(), Field::new(value.into()));
+    }
+}
+
+impl Into<Value> for &NodeProxy {
+    fn into(self) -> Value {
+        Value::Node(self.node.id.clone())
+    }
+}
+
+pub struct ValueRef<'a> {
+    rod: Rod,
+    value: &'a Value,
+}
+
+impl<'a> std::fmt::Debug for ValueRef<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ValueRef")
+            .field("rod", &"Rod")
+            .field("value", &self.value)
+            .finish()
+    }
+}
+
+impl<'a> ValueRef<'a> {
+    fn new(rod: &Rod, value: &'a Value) -> Self {
+        Self {
+            rod: rod.clone(),
+            value,
+        }
+    }
+
+    /// If this value is a reference to another node, get the node that it references from the
+    /// database
+    pub async fn follow(&self) -> Result<NodeProxy, StoreError> {
+        let id = if let Value::Node(id) = self.value {
+            id
+        } else {
+            return Ok(NodeProxy::new(&self.rod, Node::new()).await?);
+        };
+
+        if let Some(node) = self.rod.inner.store.get_node(id).await? {
+            Ok(NodeProxy::new(&self.rod, node).await?)
+        } else {
+            Ok(NodeProxy::new(&self.rod, Node::new()).await?)
+        }
+    }
+
+    /// Clone the referenced [`Value`] and return it
+    pub fn owned(&self) -> Value {
+        self.value.clone()
+    }
+}
+
+impl<'a> std::ops::Deref for ValueRef<'a> {
+    type Target = Value;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
     }
 }
 
