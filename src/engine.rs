@@ -127,8 +127,7 @@ impl NodeProxy {
 
     /// Set a node field
     ///
-    /// > **Note:** The changes to the node are not persisted or synchronized until you call
-    /// > [`NodeRef::save()`]
+    /// > **Note:** The changes to the node are not persisted or synchronized unless you call [`Rod::put()`]
     pub fn set<V: Into<Value>>(&mut self, key: &str, value: V) {
         self.node
             .fields
